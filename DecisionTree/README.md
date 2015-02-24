@@ -1,118 +1,65 @@
-Introduction
-Note: this project is adapted from those of Berkeley’s AI class and Hal Daume’s machine learning class. We appreciate their making the projects available for others.
-In this project, you will design three classifiers: “ZeroR,” “First Feature Classifier,” and a Naive Bayes classifier. You will test your classifiers on two image data sets: a set of scanned handwritten digit images and a set of face images in which edges have already been detected. Even with simple features, your Naïve Bayes classifier will be able to do quite well on these tasks when given enough training data. 
-Optical character recognition (OCR) is the task of extracting text from image sources. The first data set on which you will run your classifiers is a collection of handwritten numerical digits (0-9). This is a very commercially useful technology, similar to the technique used by the US post office to route mail by zip codes. There are systems that can perform with over 99% classification accuracy (see LeNet-5 for an example system in action). 
-Face detection is the task of localizing faces within video or still images. The faces can be at any location and vary in size. There are many applications for face detection, including human computer interaction and surveillance. You will attempt a simplified face detection task in which your system is presented with an image that has been pre-processed by an edge detection algorithm. The task is to determine whether the edge image is a face or not. There are several systems in use that perform quite well at the face detection task. One good system is the Face Detector by Schneiderman and Kanade. You can even try it out on your own photos in this demo. 
-The code for this project includes the following files and data, available as a zip file. Explanation of what you will write is below.
-Data file: data.zip – includes the digit and face data
+Summary
+In this assignment, you will be writing code to construct a decision tree, and then using it to classify instances from several different datasets. The decision tree algorithm is recursive; the amount of code needed is not huge, but there's some mental hurdles needed to completely understand what's going on – you’ll want to start this one early, as it’s more difficult than your previous assignments (that’s why it’s called a “project”). This project should be done individually, not in your teams. Please re-read the section in the syllabus on academic honesty – remember, no looking at or sharing code. This includes code on the Internet.
 
-Files you will edit and turn in
-zeroR.py			- The location where you will write your zeroR classifier.
+I have provided some skeleton code to get you started and guide you through the implementation. The code is designed to help make the decision tree easy to implement and we need your method names & signatures to stay as they are so we can autograde (parts of) the code.
 
-firstFeatureClassifier.py	- The location where you will write your firstFeature classifier.
+Datasets:
+There are two types of datasets for this assignment (provided in the zip file)
+•	Toy datasets: 
+o	The tennis dataset
+o	The restaurant dataset
+These are both useful for testing your code; they're small, and you know what the correct answers are.
+•	"Real" datasets.
+o	Lymph node data. This is the same lymphography.csv file that you worked with for HW1
+o	Nursery school data. This data set contains nursery school applications for a large number of parents. Based on characteristics about the parents, we would like to predict whether the child should be admitted to nursery school.
+o	IBM Watson dataset – getting the dataset working with all features for your decision tree is extra credit, as described below. I have provided a subset that contains only the binary features, and only contains ~23,000 examples instead of all 240,000 (tgmc_stripReal_subset.pkl – created using joblib and some preprocessing)
+These datasets will be much more interesting for evaluating the performance of your decision tree. (More on that below.)
 
-naiveBayes.py		- The location where you will write your naive Bayes classifier.
+Code:
+I've provided you with an updated version of mlUtil.py. 
+•	It creates the enhanced dictionary with ‘id’ and ‘q_id’ similar to contest.py that I posted earlier this week (but you don’t need to use this in the homework – it’s just for handy reference for the full contest data).
+•	It has a method extract_data for reading in all the CSV files associated with the datasets above. NOTE: different datasets will need different arguments when calling extract_data. If you can’t tell by looking at the csv file, please ask Cindi or Kaiming for help.
+•	For your decision trees, you will need easy access to all the values of each feature for categorical values. I have added a new method enhance_data that adds a key to your data dictionaries that contains a dictionary of these values. Test it out on the tennis data to make sure you understand what it does.  (Note: sometimes in the code I use the word attribute for feature. They mean the same thing). This dictionary will be needed by your decision tree constructor (__init__)
 
-dataClassifier.py	- The wrapper code that will call your classifiers. You can also write your enhanced feature extractor here (for extra credit). You will also use this code to analyze the behavior of your classifier.
+I’ve also provided you with a shell, decisionTree.py which contains the main class you will work with, DecisionTree. The main access methods for this class, as with ZeroR, are constructor, fit, and predict. Below are the steps you should follow for filling in this shell. Remember to test each method before moving on to the ones that build on the earlier ones!
 
+A hint: list comprehensions are very helpful for this assignment. Often, you'll need to pull out one or more columns from the data. So, for example, to get a list containing only the third column in a dataset where the last element is equal to some item 'x', you could do:
+	third = [d[2] for d in data if d[-1] == 'x'] 
 
-Files you should read but NOT edit
-classificationMethod.py
-Abstract super class for the classifiers you will write. 
-(You should read this file carefully to see how the infrastructure is set up.)
-samples.py
-I/O code to read in the classification data. 
-util.py
-Code defining some useful tools. You may be familiar with some of these by now, and they will save you a lot of time. 
-mostFrequent.py
-A simple baseline classifier that just labels every instance as the most frequent class. 
-What to submit: You will fill in portions of zeroR.py, firstFeatureClassifier.py,  naiveBayes.py, and dataClassifier.py (only) during the assignment, and submit them. Despite the staged nature, please turn in everything at the end even if you turned it in earlier.
-Evaluation: Your code will be autograded for technical correctness. Please do not change the names of any provided functions or classes within the code, or you will wreak havoc on the autograder. You are responsible for testing your own code but I provide some guidelines below.
-Academic Dishonesty: We will be checking your code against other submissions in the class for logical redundancy. If you copy someone else's code and submit it with minor changes, we will know. These cheat detectors are quite hard to fool, so please don't try. We trust you all to submit your own work only; please don't let us down. Instead, contact the course staff if you are having trouble. 
-Getting Started
-To try out the classification pipeline, run dataClassifier.py from the command line. This will classify the digit data using the default classifier (predictOne) which blindly classifies every example with a “1.”. 
-python dataClassifier.py  
-Obviously this is not a very useful classifier, since it doesn’t actually learn anything! We’ll slowly build up to more intelligent classifiers.
-You can learn more about the possible command line options by running: 
-python dataClassifier.py -h  
-We have defined some simple features for you. Later you can try to design some better features. Our simple feature set includes one feature for each pixel location, which can take values 0 or 1 (off or on). The features are encoded as a Counter where keys are feature locations (represented as (column,row)) and values are 0 or 1. The face recognition data set has value 1 only for those pixels identified by a Canny edge detector. 
-Implementation Note: You'll find it easiest to hard-code the binary feature assumption. If you do, make sure you don't include any non-binary features later on (in the extra credit). Or, you can write you code more generally, to handle arbitrary feature values, though this will probably involve a preliminary pass through the training set to find all possible values (and you’ll need an “unknown” option in case you encounter a value in the test data that you never saw during training).
-ZeroR
+Assignment:
+1.	(15%) The decision tree code is easiest to code in a bottom-up fashion. To begin, we'll need a method to compute entropy. It should take as input a list of class values, such as ['yes', 'no', 'yes', 'yes'] and return a float indicating the information content (entropy) in this data. I've provided a function stub for you.
+2.	Next, we'll want to compute remainder. This will tell us, for a given feature, how much information will remain if we choose to split on this feature. I've written this one for you.
+3.	(17%) Once we know how to compute remainders, we need to be able to select a feature. To do this, we just compute the remainder for each attribute and choose the one with the smallest remainder. (this will maximize information gain.) The function selectAttribute should take as input a list of lists (the attribute-value vectors, X), and a list of target values, y. I've provided a stub for you.
+4.	We're now ready to think about building a tree. A tree is a recursive data structure, which consists of a parent node that has links to child nodes. I've provided a TreeNode class for you that does this. (You don't need a separate Tree class.) 
 
-Question 1 (10 points) Your first implementation task will be to implement the missing functionality in zeroR (for “zero rules” – learning without any conditions). This actually will "learn" something simple: Upon receiving training data, it will simply remember which label y in Y is the most common. It will then always predict this label for future data. Test your code on the default training data (hint: you should always guess 1):
+The TreeNode has the following data members:
+o	attribute: for non-leaf nodes, this will indicate which attribute this node tests. For leaves, it is empty.
+o	value. For leaf nodes, this indicates the classification at this leaf. For non-leaf nodes, it is empty.
+o	children. This is a dictionary that maps values of the attribute being tested at this node to the appropriate child, which is also a TreeNode.
+It also has methods to print itself and to test whether it is a leaf.
+5.	(4%) So we need a method that can build a tree, or “fit” the tree to the training data. The first part (fit) just accesses any setup information from the constructor, and then call makeTree, described next.
+6.	(22%) We will call this makeTree (I have provided the method signature). It should work as follows:
+a.	If the dataset contains zero entropy, we are done. Create a leaf node with value equal to the data's classification and return it.
+b.	If the dataset is empty, we have no data for this attribute value. Create a leaf node with the value set to the default value and return it.
+c.	If there are no features left to test, create a leaf node with value set to the majority class and return it.
+d.	Otherwise, we have a non-leaf node. Use selectAttribute to find the attribute (feature) that maximizes gain. Then, remove that column for the dataset and the list of attributes and, for each value of that attribute, call makeTree with the appropriate subset of the data and add the TreeNode that is returned to the children, then return the TreeNode. You can ignore features whose value-list is ‘numeric’ rather than a list (see the extra credit question below)
+7.	(3%) Set up the constructor (__init__) to initialize any information you’ll need later on.
+8.	(20%) Now we know how to build a tree. We need to use it, though. To do this, you should fill in the predict() method in TreeNode. 
+This method is also recursive. If we are at a leaf, return the value of that leaf. Otherwise, check which attribute this node tests and follow the appropriate child according to the example passed in. If there is no child for this value, return a default value.
+9.	Congratulations! You now have a working decision tree. Test it out on the toy datasets. You might find it helpful to build a better printTree method, although this is not required. You might also want to add code to pickle your tree to a file, and a main to allow you to easily specify options. 
+10.	(13%) Once you are convinced your tree is working correctly, you should evaluate its performance. To do this, choose two of the "real" datasets. To evaluate the tree's performance, you will do 5-fold cross-validation. This means that you select 80% of the data to train on, and hold back 20% for testing. This should be done 5 times, each with a different randomly-selected training set. Fill in the stub for eval_harness.py 
+a.	For each validation fold, calculate the tree's precision, recall, and accuracy, and then average these across all 5 runs; you should do this for both the training set and validation (test set) accuracy. For the datasets with multiple classes (nursery, lymphography), you should choose in advance the most common target value as “positive” and the others should all be treated as negative, for purposes of P/R
+b.	Run your test harness on ZeroR from the previous homework.
+11.	(6%) Prepare a short (3-4 paragraph) document that describes your tree's performance and discusses any anomalies or unexpected outcomes. You should talk about: 
+a.	Did one of the data sets prove more challenging than the others?
+b.	What was the difference between training and test set accuracy? Was your tree badly overfitting on any of the data sets?
+c.	How did your decision tree perform in comparison to ZeroR?
+d.	Did it appear that any of the datasets were noisy or had other interesting issues?
+e.	Did the trees look very different (or have big differences in the sizes) between the different folds?
+12.	(5 points extra credit)  All the feature splits above are based on a discrete set of feature values and ignores the real-valued features. For extra credit (and the ability to handle the full IBM dataset), implement a version that also handles real-valued features. You might want to make a backup copy of your original decision tree code first to make sure you don’t break the required functionality above. Hand in a program called decisionTree_numeric.py to have a chance at receiving this extra credit.
 
-python dataClassifier.py –c zeroR 
+What to turn in:
+•	decisionTree.py: your version of all code described above through question #9.
+•	Tree_eval.py: the code described in #10.
+•	discuss.txt (or .doc or .pdf): the document described in #11
 
-You can test on the faces data with the –d faces option. This is “P1: Q1” on Canvas and should be fully functional when you turn it in. You are permitted to turn in only zeroR.py for this first due date.
-
-FirstFeatureClassifier
-
-Question 2 (15 points) Your second implementation task will be to implement the missing functionality in firstFeatureClassifier.py. This will do something slightly non-trivial. It looks at the first feature (i.e., X[0]) and uses this to make a prediction. Based on the training data, it computes what is the most common class for the case when X[0] == 0 and the most common class for the case when X[0] == 1. Upon receiving a test point, it checks the value of X[0] and returns the corresponding class.  Test your code on the default training data:
-
-python dataClassifier.py –c firstFeatureClf
-
-This is “P1: Q2” on Canvas and should be fully functional when you turn it in (for the first 7 points), though if you find bugs later you can update it for the final submission (to get the other 8 points; if it was right the first time you’ll get the 8 pts for free!). You are permitted to turn in only firstFeatureClassifier.py for this second due date.
-
-
-Naive Bayes
-A skeleton implementation of a naive Bayes classifier is provided for you in naiveBayes.py. You will fill in the following functions in stages: justTrain, trainAndTune, calculateLogJointProbabilities and findHighOddsFeatures. 
-Theory Review
-As discussed in class, a naive Bayes classifier models a joint distribution over a label Y and a set of observed random variables, or features, (X1, X2,…, Xd), using the assumption that the full joint distribution can be factored as follows (features are conditionally independent given the label): 
- 
-To classify a datum, we can find the most probable label given the feature values for each variable, using Bayes theorem: 
- 
-  
-
-Because multiplying many probabilities together often results in underflow, we will instead compute log probabilities which have the same argmax: 
- 
-To compute logarithms, use math.log(), a built-in Python function. 
-Parameter Estimation
-Our naive Bayes model has several parameters to estimate. One parameter is the prior distribution over labels (digits, or face/not face),   where we use a “hat” (^) over a probability to denote our model’s estimate of that probability. We can estimate P(Y) directly from the training data: 
-
- 
-where c(y) is the number of training instances with label y and N is the total number of training instances. 
-The other parameters to estimate are the conditional probabilities of our features given each label y:   . We do this for each possible feature value (xi ∈ {0,1}). 
- 
-where c(xi, y) is the number of times variable Xi took value xi in the training examples of label y. 
-Question 3 (40 points) Implement justTrain (20 points) and calculateLogJointProbabilities (20 points) in naiveBayes.py. This is a baseline Naïve Bayes without smoothing, and ignores the validation set. Test your classifier with:
-python dataClassifier.py -c naiveBayes
-This is “P1: Q3” on Canvas. Try to get as much of it done as you can before this due date, I will check that you have written at least a possibly buggy version (to get 15 pts), which you can update for the final due date (to get the remaining 25 pts). You may turn in only naiveBayes.py for this due date.
-Hints and observations: 
-	The method calculateLogJointProbabilities uses the conditional probability tables constructed by justTrain or  trainAndTune (depending on whether smoothing is used) to compute the log posterior probability for each label y given a feature vector. The comments of the method describe the data structures of the input and output. 
-	You can add code to the analysis method in dataClassifier.py to explore the mistakes that your classifier is making. This is optional. 
-	To run on the face recognition dataset, use -d faces (optional but I will test this). 
-
-Smoothing
-Your current parameter estimates are unsmoothed, that is, you are using the empirical estimates for the parameters  . These estimates are rarely adequate in real systems. Minimally, we need to make sure that no parameter ever receives an estimate of zero, but good smoothing can boost accuracy quite a bit by reducing overfitting. 
-In this project, we use Laplace smoothing, which adds k counts to every possible observation value: 
- 
-If k=0, the probabilities are unsmoothed. As k grows larger, the probabilities are smoothed more and more. You can use your validation set to determine a good value for k. Note: don't smooth P(Y). 
-
-Question 4 (20 points) Implement trainAndTune in naiveBayes.py. In trainAndTune, estimate conditional probabilities from the training data for each possible value of k given in the list kgrid. Evaluate accuracy on the held-out validation set for each k and choose the value with the highest validation accuracy. In case of ties, prefer the lowest value of k. Test your classifier with: 
-python dataClassifier.py -c naiveBayes --autotune 
-Hints and observations: 
-	When trying different values of the smoothing parameter k, think about the number of times you scan the training data. Your code should save computation by avoiding redundant reading. 
-	To run your classifier with only one particular value of k, remove the --autotune option, which uses k=0 by default as in Question 3. You can change the default k with –k, which will call trainAndTune to do smoothing but it will not need to examine the validation set (if you implement it appropriately). 
-	Using a fixed value of k=2 and 100 training examples, you should get a validation accuracy of about 69% and a test accuracy of 55%. 
-	Using --autotune, which tries different values of k, you should get a validation accuracy of about 74% and a test accuracy of 65%. 
-	Accuracies may vary slightly because of implementation details. For instance, ties are not deterministically broken in the Counter.argMax() method. 
-	To run on the face recognition dataset, use -d faces (optional). 
-Odds Ratios
-One important tool in using classifiers in real domains is being able to inspect what they have learned. One way to inspect a naive Bayes model is to look at the most likely features for a given label. 
-Another, better, tool for understanding the parameters is to look at odds ratios. For each feature X and classes y1, y2, consider the odds ratio:
-
-This ratio will be greater than one for features which cause belief in y1 to increase relative to y2. 
-The features that have the greatest impact at classification time are those with both a high probability (because they appear often in the data) and a high odds ratio (because they strongly bias one label versus another). 
-Question 5 (15 points) Fill in the function findHighOddsFeatures(self, label1, label2). It should return a list of the 100 features with highest odds ratios for label1 over label2. The option -o activates an odds ratio analysis. Use the options -1 label1 -2 label2 to specify which labels to compare. Running the following command will show you the 100 pixels that best distinguish between a 3 and a 6. 
-python dataClassifier.py -a -d digits -c naiveBayes -o -1 3 -2 6  
-
-
-
-
-Feature Design – Extra Credit
-Building classifiers is only a small part of getting a good system working for a task. Indeed, the main difference between a good classification system and a bad one is usually not the classifier itself (e.g. decision trees vs. naive Bayes), but rather the quality of the features used. So far, we have used the simplest possible features: the identity of each pixel (being on/off). 
-To increase your classifier's accuracy further, you will need to extract more useful features from the data. The EnhancedFeatureExtractorDigit in dataClassifier.py is your new playground. When analyzing your classifiers' results, you should look at some of your errors and look for characteristics of the input that would give the classifier useful information about the label. You can add code to the analysis function in dataClassifier.py to inspect what your classifier is doing. For instance in the digit data, consider the number of separate, connected regions of white pixels, which varies by digit type. 1, 2, 3, 5, 7 tend to have one contiguous region of white space while the loops in 6, 8, 9 create more. The number of white regions in a 4 depends on the writer. This is an example of a feature that is not directly available to the classifier from the per-pixel information. If your feature extractor adds new features that encode these properties, the classifier will be able exploit them. Note that some features may require non-trivial computation to extract, so write efficient and correct code. 
-Extra Credit Question  (up to 6 points) Add new features for the digit dataset in the EnhancedFeatureExtractorDigit function in such a way that it works with your implementation of the naive Bayes classifier: this means that for this part, you are restricted to features which can take a finite number of discrete values (and if you have assumed that features are binary valued, then you are restricted to binary features). Note that you can encode a feature which takes 3 values [1,2,3] by using 3 binary features, of which only one is on at the time, to indicate which of the three possibilities you have. In theory, features aren't conditionally independent as naive Bayes requires, but your classifier can still work well in practice. We will test your classifier with the following command: 
-python dataClassifier.py -d digits -c naiveBayes -f -a -t 1000  
-
-With the basic features (without the -f option), your optimal choice of smoothing parameter should yield 82% on the validation set with a test performance of 78%. You will receive 3 points for implementing new feature(s) which yield any improvement at all. You will receive 3 additional points if your new feature(s) give you a test performance greater than or equal to 84% with the above command. 
